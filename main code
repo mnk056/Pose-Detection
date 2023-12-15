@@ -1,0 +1,92 @@
+import cv2
+import mediapipe as mp
+import webbrowser
+import random
+
+# Initialize MediaPipe
+mp_drawing = mp.solutions.drawing_utils
+mp_hands = mp.solutions.hands
+mp_holistic = mp.solutions.holistic
+
+# Create a webcam capture , When you are using DSLR, Change the (0) value  below. 0 means internal webcam.
+cap = cv2.VideoCapture(0)
+
+# Flags to track hand detection and video playback
+hand_detected = False
+video_playing = False
+hand_detection_count = 0
+
+# enter link to your youtube video
+youtube_videos = [
+    'https://www.youtube.com',
+
+
+]
+
+# Loop over the webcam frames
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    # Convert the frame to RGB
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+    # Process the frame with MediaPipe Holistic and Hands
+    with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic, \
+            mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5) as hands:
+        results_holistic = holistic.process(frame_rgb)
+        results_hands = hands.process(frame_rgb)
+
+    # Draw the body, arms, and face on the frame
+    mp_drawing.draw_landmarks(frame, results_holistic.pose_landmarks, mp_holistic.POSE_CONNECTIONS)
+    mp_drawing.draw_landmarks(frame, results_holistic.right_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
+    mp_drawing.draw_landmarks(frame, results_holistic.left_hand_landmarks, mp_holistic.HAND_CONNECTIONS)
+
+    # Draw the hand landmarks
+    if results_hands.multi_hand_landmarks:
+        for landmarks in results_hands.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(frame, landmarks, mp_hands.HAND_CONNECTIONS)
+
+            # Set the hand_detected flag to True when a hand is detected
+            hand_detected = True
+    else:
+        # If no hand landmarks are detected, set the hand_detected flag to False
+        hand_detected = False
+
+    # Check if hand is detected
+    if hand_detected:
+        hand_detection_count += 1
+
+        # First hand detection: Open the video link
+        if hand_detection_count == 1 and not video_playing:
+            random_video_url = random.choice(youtube_videos)
+
+            # Open the web browser and play the selected YouTube video
+            webbrowser.open(random_video_url)
+
+            # Set the video_playing flag to True
+            video_playing = True
+
+        # Second hand detection: Pause the video
+        elif hand_detection_count == 2 and video_playing:
+            # Close the web browser to pause the video
+            webbrowser.open("about:blank")
+
+            # Reset the video_playing flag to False
+            video_playing = False
+
+        # Reset the hand_detection_count
+        hand_detection_count = 0
+
+    # Display the frame
+    cv2.imshow("Body, Arms, and Hands Detection", frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Release the webcam capture object
+cap.release()
+
+# Close all windows
+cv2.destroyAllWindows()
